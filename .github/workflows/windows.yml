@@ -3,8 +3,8 @@ on: [push]
 jobs:
 
   build:
-    name: Build
-    runs-on: ubuntu-latest
+    name: Windows
+    runs-on: windows-latest
     strategy:
       matrix:
         go: [1.15]
@@ -15,15 +15,8 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
-    - name: Check out code into the Go module directory
+    - name: Check out code
       uses: actions/checkout@v2
-
-    - uses: actions/checkout@v2
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v2
-      with:
-        version: v1.33
-        args: -D errcheck
 
     - name: Run test
       run: |
