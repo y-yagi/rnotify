@@ -1,0 +1,31 @@
+name: CI
+on: [push]
+jobs:
+
+  build:
+    name: Ubuntu
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [1.15]
+    steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.33
+        args: -D errcheck
+
+    - name: Run test
+      run: |
+        go test -v ./...
+      env:
+        GO111MODULE: on

@@ -1,5 +1,3 @@
-// +build linux
-
 package rnotify_test
 
 import (
