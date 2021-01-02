@@ -3,6 +3,7 @@
 package rnotify
 
 import (
+	"log"
 	"math"
 	"path/filepath"
 	"time"
@@ -52,7 +53,8 @@ func (w *Watcher) Add(name string) error {
 			for _, event := range msg {
 				op := w.translateEvent(event.Flags)
 				if op != unsupportedOp {
-					e := fsnotify.Event{Name: event.Path, Op: op}
+					// FIXME(y-yagi) Is '/' really need?
+					e := fsnotify.Event{Name: "/" + event.Path, Op: op}
 					w.Events <- e
 				}
 			}
@@ -72,16 +74,61 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) translateEvent(event fsevents.EventFlags) fsnotify.Op {
-	if event&fsevents.ItemCreated == fsevents.ItemCreated {
-		return fsnotify.Create
-	} else if event&fsevents.ItemModified == fsevents.ItemModified {
-		return fsnotify.Write
-	} else if event&fsevents.ItemRemoved == fsevents.ItemRemoved {
+	if event&fsevents.ItemRemoved == fsevents.ItemRemoved {
 		return fsnotify.Remove
-	} else if event&fsevents.ItemRemoved == fsevents.ItemRemoved {
+	}
+
+	if event&fsevents.ItemRenamed == fsevents.ItemRenamed {
 		return fsnotify.Rename
-	} else if event&fsevents.ItemChangeOwner == fsevents.ItemChangeOwner {
+	}
+
+	if event&fsevents.ItemChangeOwner == fsevents.ItemChangeOwner {
 		return fsnotify.Chmod
 	}
+
+	if event&fsevents.ItemModified == fsevents.ItemModified {
+		if event&fsevents.ItemCreated == fsevents.ItemCreated {
+			return fsnotify.Create
+		}
+		return fsnotify.Write
+	}
+
+	if event&fsevents.ItemCreated == fsevents.ItemCreated {
+		return fsnotify.Create
+	}
+
 	return unsupportedOp
+}
+
+var noteDescription = map[fsevents.EventFlags]string{
+	fsevents.MustScanSubDirs: "MustScanSubdirs",
+	fsevents.UserDropped:     "UserDropped",
+	fsevents.KernelDropped:   "KernelDropped",
+	fsevents.EventIDsWrapped: "EventIDsWrapped",
+	fsevents.HistoryDone:     "HistoryDone",
+	fsevents.RootChanged:     "RootChanged",
+	fsevents.Mount:           "Mount",
+	fsevents.Unmount:         "Unmount",
+
+	fsevents.ItemCreated:       "Created",
+	fsevents.ItemRemoved:       "Removed",
+	fsevents.ItemInodeMetaMod:  "InodeMetaMod",
+	fsevents.ItemRenamed:       "Renamed",
+	fsevents.ItemModified:      "Modified",
+	fsevents.ItemFinderInfoMod: "FinderInfoMod",
+	fsevents.ItemChangeOwner:   "ChangeOwner",
+	fsevents.ItemXattrMod:      "XAttrMod",
+	fsevents.ItemIsFile:        "IsFile",
+	fsevents.ItemIsDir:         "IsDir",
+	fsevents.ItemIsSymlink:     "IsSymLink",
+}
+
+func (w *Watcher) logEvent(event fsevents.Event) {
+	note := ""
+	for bit, description := range noteDescription {
+		if event.Flags&bit == bit {
+			note += description + " "
+		}
+	}
+	log.Printf("EventID: %d Path: %s Flags: %s", event.ID, event.Path, note)
 }
