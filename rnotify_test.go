@@ -4,10 +4,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/y-yagi/rnotify"
 )
 
@@ -22,10 +22,13 @@ func TestWatchDirRecursive(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if tempDir, err = filepath.EvalSymlinks(tempDir); err != nil {
+		t.Fatal(err)
+	}
+
 	watcher, _ := rnotify.NewWatcher()
 	defer watcher.Close()
 
-	events := []string{}
 	done := make(chan bool)
 
 	fileA := filepath.Join(tempDir, "a")
@@ -33,7 +36,14 @@ func TestWatchDirRecursive(t *testing.T) {
 	fileC := filepath.Join(tempDir, "foo", "c")
 	dirD := filepath.Join(tempDir, "foo", "d")
 	fileE := filepath.Join(tempDir, "foo", "d", "e")
-	expected := []string{fileA, fileA, dirB, fileC, fileC, dirD, fileE, fileE}
+	events := map[string]fsnotify.Op{
+		fileA: fsnotify.Create,
+		dirB:  fsnotify.Create,
+		fileC: fsnotify.Create,
+		dirD:  fsnotify.Create,
+		fileE: fsnotify.Create,
+		dirB:  fsnotify.Remove,
+	}
 
 	go func() {
 		for {
@@ -42,8 +52,11 @@ func TestWatchDirRecursive(t *testing.T) {
 				if !ok {
 					return
 				}
-				events = append(events, event.Name)
-				if len(events) == len(expected) {
+				if op, found := events[event.Name]; found && op == event.Op&op {
+					delete(events, event.Name)
+				}
+
+				if len(events) == 0 {
 					done <- true
 				}
 			case <-time.After(3 * time.Second):
@@ -62,10 +75,11 @@ func TestWatchDirRecursive(t *testing.T) {
 	os.Mkdir(dirD, 0777)
 	time.Sleep(100 * time.Millisecond)
 	ioutil.WriteFile(fileE, []byte{'e'}, 0644)
+	os.RemoveAll(dirB)
 
 	<-done
 
-	if !reflect.DeepEqual(expected, events) {
-		t.Fatalf("Expect %v, but got %v", expected, events)
+	if len(events) != 0 {
+		t.Fatalf("%+v events didn't occur", events)
 	}
 }
