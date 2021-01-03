@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/y-yagi/rnotify"
 )
 
@@ -14,6 +15,7 @@ func main() {
 	defer watcher.Close()
 
 	done := make(chan bool)
+
 	go func() {
 		for {
 			select {
@@ -22,9 +24,9 @@ func main() {
 					return
 				}
 				log.Println("event:", event)
-				// if event.Op&fsnotify.Write == fsnotify.Write {
-				// 	log.Println("modified file:", event.Name)
-				// }
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Println("modified file:", event.Name)
+				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
@@ -39,9 +41,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = watcher.Add("/tmp/bar")
-	if err != nil {
-		log.Fatal(err)
-	}
 	<-done
 }
