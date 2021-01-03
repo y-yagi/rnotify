@@ -37,7 +37,7 @@ func main() {
 					return
 				}
 				log.Println("event:", event)
-        // `Op` is the same as `fsnotify.Op`.
+				// `Op` is the same as `fsnotify.Op`.
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
 				}
