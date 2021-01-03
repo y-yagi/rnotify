@@ -9,12 +9,14 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+// Watcher watches files and directories, delivering events to a channel.
 type Watcher struct {
 	Events    chan fsnotify.Event
 	Errors    chan error
 	fswatcher *fsnotify.Watcher
 }
 
+// NewWatcher builds a new watcher.
 func NewWatcher() (*Watcher, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -31,10 +33,7 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
-func (w *Watcher) Close() error {
-	return w.fswatcher.Close()
-}
-
+// Add starts watching the directory (recursively).
 func (w *Watcher) Add(name string) error {
 	err := filepath.Walk(name, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -50,6 +49,11 @@ func (w *Watcher) Add(name string) error {
 	})
 
 	return err
+}
+
+// Close stops watching.
+func (w *Watcher) Close() error {
+	return w.fswatcher.Close()
 }
 
 func (w *Watcher) readEvents() {

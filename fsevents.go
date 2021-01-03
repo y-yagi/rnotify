@@ -14,12 +14,14 @@ import (
 
 const unsupportedOp = math.MaxUint32
 
+// Watcher watches files and directories, delivering events to a channel.
 type Watcher struct {
 	es     *fsevents.EventStream
 	Events chan fsnotify.Event
 	Errors chan error
 }
 
+// NewWatcher builds a new watcher.
 func NewWatcher() (*Watcher, error) {
 	w := &Watcher{
 		Events: make(chan fsnotify.Event),
@@ -28,6 +30,7 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
+// Add starts watching the directory (recursively).
 func (w *Watcher) Add(name string) error {
 	absPath, err := filepath.EvalSymlinks(name)
 	if err != nil {
@@ -64,6 +67,7 @@ func (w *Watcher) Add(name string) error {
 	return nil
 }
 
+// Close stops watching.
 func (w *Watcher) Close() error {
 	if w.es == nil {
 		return nil
