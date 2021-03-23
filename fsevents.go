@@ -104,6 +104,7 @@ func (w *Watcher) translateEvent(event fsevents.EventFlags) fsnotify.Op {
 	return unsupportedOp
 }
 
+//nolint:unused
 var noteDescription = map[fsevents.EventFlags]string{
 	fsevents.MustScanSubDirs: "MustScanSubdirs",
 	fsevents.UserDropped:     "UserDropped",
@@ -127,6 +128,7 @@ var noteDescription = map[fsevents.EventFlags]string{
 	fsevents.ItemIsSymlink:     "IsSymLink",
 }
 
+//nolint:unused
 func (w *Watcher) logEvent(event fsevents.Event) {
 	note := ""
 	for bit, description := range noteDescription {
