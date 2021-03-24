@@ -1,6 +1,6 @@
 module github.com/y-yagi/rnotify
 
-go 1.15
+go 1.16
 
 require (
 	github.com/fsnotify/fsevents v0.1.1
