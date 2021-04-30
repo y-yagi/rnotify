@@ -69,12 +69,12 @@ func TestWatchDirRecursive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ioutil.WriteFile(fileA, []byte{'a'}, 0644)
+	ioutil.WriteFile(fileA, []byte{'a'}, 0600)
 	os.Mkdir(dirB, 0777)
-	ioutil.WriteFile(fileC, []byte{'c'}, 0644)
+	ioutil.WriteFile(fileC, []byte{'c'}, 0600)
 	os.Mkdir(dirD, 0777)
 	time.Sleep(100 * time.Millisecond)
-	ioutil.WriteFile(fileE, []byte{'e'}, 0644)
+	ioutil.WriteFile(fileE, []byte{'e'}, 0600)
 	os.RemoveAll(dirB)
 
 	<-done
