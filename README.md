@@ -1,6 +1,7 @@
 # rnotify
 
 ![Build Status](https://github.com/y-yagi/rnotify/workflows/CI/badge.svg)
+[![Go Reference](https://pkg.go.dev/badge/github.com/y-yagi/rnotify.svg)](https://pkg.go.dev/github.com/y-yagi/rnotify)
 
 `rnotify` is a wrapper of [fsnotify](https://github.com/fsnotify/fsnotify), supports recursive directory watching on Go.
 
