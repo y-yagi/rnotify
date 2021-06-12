@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsevents"
@@ -16,16 +17,18 @@ const unsupportedOp = math.MaxUint32
 
 // Watcher watches files and directories, delivering events to a channel.
 type Watcher struct {
-	es     *fsevents.EventStream
-	Events chan fsnotify.Event
-	Errors chan error
+	Events  chan fsnotify.Event
+	Errors  chan error
+	mu      sync.Mutex
+	watches map[string]*fsevents.EventStream
 }
 
 // NewWatcher builds a new watcher.
 func NewWatcher() (*Watcher, error) {
 	w := &Watcher{
-		Events: make(chan fsnotify.Event),
-		Errors: make(chan error),
+		Events:  make(chan fsnotify.Event),
+		Errors:  make(chan error),
+		watches: make(map[string]*fsevents.EventStream),
 	}
 	return w, nil
 }
@@ -42,14 +45,18 @@ func (w *Watcher) Add(name string) error {
 		return err
 	}
 
-	w.es = &fsevents.EventStream{
+	es := &fsevents.EventStream{
 		Paths:   []string{absPath},
 		Latency: 500 * time.Millisecond,
 		Device:  dev,
 		Flags:   fsevents.FileEvents}
 
-	w.es.Start()
-	ec := w.es.Events
+	w.mu.Lock()
+	w.watches[name] = es
+	w.mu.Unlock()
+
+	es.Start()
+	ec := es.Events
 
 	go func() {
 		for msg := range ec {
@@ -69,11 +76,18 @@ func (w *Watcher) Add(name string) error {
 
 // Close stops watching.
 func (w *Watcher) Close() error {
-	if w.es == nil {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if len(w.watches) == 0 {
 		return nil
 	}
 
-	w.es.Stop()
+	for path, es := range w.watches {
+		es.Stop()
+		delete(w.watches, path)
+	}
+
 	return nil
 }
 

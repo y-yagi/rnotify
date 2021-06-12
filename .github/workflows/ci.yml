@@ -25,6 +25,6 @@ jobs:
 
     - name: Run test
       run: |
-        go test -v ./...
+        go test -v ./... -timeout 5s
       env:
         GO111MODULE: on
