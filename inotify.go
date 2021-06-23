@@ -5,6 +5,7 @@ package rnotify
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -14,6 +15,7 @@ type Watcher struct {
 	Events    chan fsnotify.Event
 	Errors    chan error
 	fswatcher *fsnotify.Watcher
+	ignore    map[string]struct{}
 }
 
 // NewWatcher builds a new watcher.
@@ -27,6 +29,7 @@ func NewWatcher() (*Watcher, error) {
 		fswatcher: watcher,
 		Events:    make(chan fsnotify.Event),
 		Errors:    make(chan error),
+		ignore:    map[string]struct{}{},
 	}
 
 	go w.readEvents()
@@ -41,6 +44,12 @@ func (w *Watcher) Add(name string) error {
 		}
 
 		if info.IsDir() {
+			for ignorePath := range w.ignore {
+				if strings.Contains(path, ignorePath) {
+					return nil
+				}
+			}
+
 			if err = w.fswatcher.Add(path); err != nil {
 				return err
 			}
@@ -56,6 +65,13 @@ func (w *Watcher) Close() error {
 	return w.fswatcher.Close()
 }
 
+// Ignore specifies directories to ignore.
+func (w *Watcher) Ignore(paths []string) {
+	for _, path := range paths {
+		w.ignore[path] = struct{}{}
+	}
+}
+
 func (w *Watcher) readEvents() {
 	defer close(w.Errors)
 	defer close(w.Events)
@@ -69,8 +85,17 @@ func (w *Watcher) readEvents() {
 					if err != nil {
 						w.Errors <- err
 					} else if info.IsDir() {
-						if err = w.fswatcher.Add(event.Name); err != nil {
-							w.Errors <- err
+						skip := false
+						for ignorePath := range w.ignore {
+							if strings.Contains(event.Name, ignorePath) {
+								skip = true
+								break
+							}
+						}
+						if !skip {
+							if err = w.fswatcher.Add(event.Name); err != nil {
+								w.Errors <- err
+							}
 						}
 					}
 				}

@@ -1,9 +1,11 @@
 package rnotify_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,6 +78,78 @@ func TestWatchDirRecursive(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	ioutil.WriteFile(fileE, []byte{'e'}, 0600)
 	os.RemoveAll(dirB)
+
+	<-done
+
+	if len(events) != 0 {
+		t.Fatalf("%+v events didn't occur", events)
+	}
+}
+
+func TestIgnore(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "rnotify_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	if err := os.Mkdir(filepath.Join(tempDir, "foo"), 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Mkdir(filepath.Join(tempDir, ".git"), 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	if tempDir, err = filepath.EvalSymlinks(tempDir); err != nil {
+		t.Fatal(err)
+	}
+
+	watcher, _ := rnotify.NewWatcher()
+	watcher.Ignore([]string{".git"})
+	defer watcher.Close()
+
+	done := make(chan bool)
+
+	fileA := filepath.Join(tempDir, "a")
+	fileB := filepath.Join(tempDir, "foo", "b")
+	fileC := filepath.Join(tempDir, ".git", "c")
+	events := map[string]fsnotify.Op{
+		fileA: fsnotify.Create,
+		fileB: fsnotify.Create,
+	}
+
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if op, found := events[event.Name]; found && op == event.Op&op {
+					delete(events, event.Name)
+				} else if strings.Contains(event.Name, ".git") {
+					fmt.Printf("unexpected %+v occurred\n", event)
+					done <- true
+				}
+
+				if len(events) == 0 {
+					done <- true
+				}
+			case <-time.After(3 * time.Second):
+				done <- true
+			}
+		}
+	}()
+
+	if err = watcher.Add(tempDir); err != nil {
+		t.Fatal(err)
+	}
+
+	ioutil.WriteFile(fileC, []byte{'c'}, 0600)
+	ioutil.WriteFile(fileA, []byte{'a'}, 0600)
+	ioutil.WriteFile(fileB, []byte{'b'}, 0600)
+	time.Sleep(100 * time.Millisecond)
 
 	<-done
 
