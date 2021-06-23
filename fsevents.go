@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ type Watcher struct {
 	Errors  chan error
 	mu      sync.Mutex
 	watches map[string]*fsevents.EventStream
+	ignore  map[string]struct{}
 }
 
 // NewWatcher builds a new watcher.
@@ -29,6 +31,7 @@ func NewWatcher() (*Watcher, error) {
 		Events:  make(chan fsnotify.Event),
 		Errors:  make(chan error),
 		watches: make(map[string]*fsevents.EventStream),
+		ignore:  map[string]struct{}{},
 	}
 	return w, nil
 }
@@ -61,8 +64,16 @@ func (w *Watcher) Add(name string) error {
 	go func() {
 		for msg := range ec {
 			for _, event := range msg {
+				skip := false
+				for ignorePath := range w.ignore {
+					if strings.Contains(event.Path, ignorePath) {
+						skip = true
+						break
+					}
+				}
+
 				op := w.translateEvent(event.Flags)
-				if op != unsupportedOp {
+				if !skip && op != unsupportedOp {
 					// FIXME(y-yagi) Is '/' really need?
 					e := fsnotify.Event{Name: "/" + event.Path, Op: op}
 					w.Events <- e
@@ -89,6 +100,13 @@ func (w *Watcher) Close() error {
 	}
 
 	return nil
+}
+
+// Ignore specifies directories to ignore.
+func (w *Watcher) Ignore(paths []string) {
+	for _, path := range paths {
+		w.ignore[path] = struct{}{}
+	}
 }
 
 func (w *Watcher) translateEvent(event fsevents.EventFlags) fsnotify.Op {
