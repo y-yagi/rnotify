@@ -14,7 +14,7 @@ import (
 )
 
 func TestWatchDirRecursive(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "rnotify_test")
+	tempDir, err := os.MkdirTemp("", "rnotify_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestWatchDirRecursive(t *testing.T) {
 }
 
 func TestIgnore(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "rnotify_test")
+	tempDir, err := os.MkdirTemp("", "rnotify_test")
 	if err != nil {
 		t.Fatal(err)
 	}
